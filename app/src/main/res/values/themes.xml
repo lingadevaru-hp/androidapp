@@ -3,12 +3,8 @@
 
     <style name="Theme.MyApplication" parent="android:Theme.DeviceDefault.NoActionBar" />
     
-    <!-- Splash screen theme - must be a Theme.Material3 or Theme.AppCompat theme -->
-    <style name="Theme.MyApplication.Splash" parent="Theme.Material3.DayNight.NoActionBar">
+    <!-- Splash screen theme - use DeviceDefault for compatibility -->
+    <style name="Theme.MyApplication.Splash" parent="android:Theme.DeviceDefault.NoActionBar">
         <item name="android:windowBackground">@color/splash_background</item>
-        <item name="android:windowSplashScreenBackground">@color/splash_background</item>
-        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
-        <item name="android:windowSplashScreenAnimationDuration">1000</item>
-        <item name="android:windowSplashScreenIconAnimatable">true</item>
     </style>
 </resources>

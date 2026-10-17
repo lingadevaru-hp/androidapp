@@ -1,11 +1,13 @@
 package com.example.data
 
 import com.example.model.Message
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 import java.util.Locale
 
 /**
@@ -42,15 +44,24 @@ class NativeAssistantRepository(
                 "Speech recognition is not available on this device."
             }
             // The SpeechRecognizer is callback-based; wrap in a suspending call.
-            suspendCancellableCoroutine<String> { cont ->
-                val lang = resolveLocale(locale)
-                stt.startListening(locale = lang) { transcript ->
-                    cont.resume(transcript)
-                }
+            suspendCoroutine { cont ->
+                val lang = resolveLocale(locale).toLanguageTag()
+                var isCancelled = false
+                
+                // Start listening
+                stt.startListening(language = lang, onResult = { transcript ->
+                    if (!isCancelled) {
+                        cont.resume(transcript)
+                    }
+                }, onPartialResult = { partial ->
+                    // Handle partial results if needed
+                })
+                
                 // Auto-cancel after 30 seconds if no result
-                scope.launch {
+                val timeoutJob = scope.launch {
                     kotlinx.coroutines.delay(30_000)
-                    if (stt.isListening.value) {
+                    if (stt.isListening.value && !isCancelled) {
+                        isCancelled = true
                         stt.cancel()
                         cont.resume("")
                     }

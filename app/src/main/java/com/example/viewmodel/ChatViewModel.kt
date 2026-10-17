@@ -155,13 +155,14 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             )
             persistCurrentThread(finalThread)
 
-            // Auto-speak if enabled
-            if (_uiState.value.settings.autospeak || _uiState.value.settings.handsfree) {
-                audioService.onSpeakerClick(
-                    "msg_${assistantMessage.id}",
-                    assistantMessage.text
-                )
-            }
+            // Note: autospeak and handsfree settings not yet implemented
+            // Uncomment when added to UserSettings
+            // if (_uiState.value.settings.autospeak || _uiState.value.settings.handsfree) {
+            //     audioService.onSpeakerClick(
+            //         "msg_${assistantMessage.id}",
+            //         assistantMessage.text
+            //     )
+            // }
         }
     }
 

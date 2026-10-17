@@ -102,7 +102,6 @@ class SpeechRecognizerManager(
                         android.speech.SpeechRecognizer.ERROR_NO_MATCH -> "No match — try again"
                         android.speech.SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Recognizer busy — try again"
                         android.speech.SpeechRecognizer.ERROR_SERVER -> "Server error — try again"
-                        android.speech.SpeechRecognizer.ERROR_SERVER_DOWN -> "Server down — try again"
                         android.speech.SpeechRecognizer.ERROR_AUDIO -> "Audio recording error — try again"
                         android.speech.SpeechRecognizer.ERROR_CLIENT -> "Client error — try again"
                         android.speech.SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "Speech timeout — try again"
@@ -164,7 +163,7 @@ class SpeechRecognizerManager(
 
         recognizerIntent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE, locale.languageTag)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, locale.toLanguageTag())
             putExtra(RecognizerIntent.EXTRA_PROMPT, prompt)
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 5)
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true) // Enable real-time transcription
@@ -252,12 +251,22 @@ class SpeechRecognizerManager(
             val locale = Locale.forLanguageTag(languageCode.replace("-", "_"))
             val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE, locale.languageTag)
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE, locale.toLanguageTag())
             }
             val recognizer = SpeechRecognizer.createSpeechRecognizer(context.applicationContext)
             val isAvailable = try {
                 // Try to check if the language is available
-                recognizer.setRecognitionListener(object : RecognitionListener {})
+                recognizer.setRecognitionListener(object : RecognitionListener {
+                    override fun onReadyForSpeech(params: Bundle?) {}
+                    override fun onBeginningOfSpeech() {}
+                    override fun onRmsChanged(rmsdB: Float) {}
+                    override fun onBufferReceived(buffer: ByteArray?) {}
+                    override fun onEndOfSpeech() {}
+                    override fun onError(error: Int) {}
+                    override fun onResults(results: Bundle?) {}
+                    override fun onPartialResults(partialResults: Bundle?) {}
+                    override fun onEvent(eventType: Int, params: Bundle?) {}
+                })
                 recognizer.startListening(intent)
                 recognizer.cancel()
                 true

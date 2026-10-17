@@ -1,27 +1,21 @@
 package com.example.ui.screens
 
+import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.ContentTransform
-import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -32,6 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -59,7 +54,6 @@ class SplashActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun SplashScreen() {
     var showContent by remember { mutableStateOf(false) }
@@ -95,15 +89,18 @@ fun SplashScreen() {
     }
     
     if (navigateToMain) {
-        val intent = Intent(this@SplashScreen, MainActivity::class.java)
-        startActivity(intent)
-        finish()
+        val context = LocalContext.current
+        val intent = Intent(context, MainActivity::class.java)
+        context.startActivity(intent)
+        if (context is Activity) {
+            context.finish()
+        }
     } else {
         // Splash screen content
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background),
+                .background(Color(0xFF0A0A0B)),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -114,55 +111,32 @@ fun SplashScreen() {
                 modifier = Modifier
                     .size(120.dp)
                     .alpha(alphaAnim.value)
-                    .then(Modifier.scale(scaleAnim.value))
+                    .scale(scaleAnim.value)
             )
             
             // Spacing
-            androidx.compose.foundation.layout.Spacer(
+            Spacer(
                 modifier = Modifier.size(24.dp)
             )
             
             // App Name
-            AnimatedContent(
-                targetState = showContent,
-                transitionSpec = {
-                    if (targetState) {
-                        (fadeIn(animationSpec = tween(800)) + scaleIn(animationSpec = tween(800)))
-                            .togetherWith(fadeOut(animationSpec = tween(300)))
-                    } else {
-                        fadeOut(animationSpec = tween(300))
-                    }.using(ContentTransform.copy(targetContentZIndex = 1f))
-                },
-                label = "appNameAnimation"
-            ) { _ ->
-                Text(
-                    text = "Thoshan",
-                    color = Color(0xFFE8703A), // Orange accent
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center
-                )
-            }
+            Text(
+                text = "Thoshan",
+                color = Color(0xFFE8703A),
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.alpha(alphaAnim.value)
+            )
             
             // Subtitle
-            if (showContent) {
-                Text(
-                    text = "Portfolio Assistant",
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
-                    fontSize = 14.sp,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.alpha(alphaAnim.value)
-                )
-            }
+            Text(
+                text = "Portfolio Assistant",
+                color = Color(0xFF9A9AA2),
+                fontSize = 14.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.alpha(alphaAnim.value)
+            )
         }
-    }
-}
-
-// Preview for Android Studio
-@OptIn(ExperimentalAnimationApi::class)
-@Composable
-fun SplashScreenPreview() {
-    MaterialTheme {
-        SplashScreen()
     }
 }
