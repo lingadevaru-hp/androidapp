@@ -55,14 +55,16 @@ jobs:
         run: |
           APK=app/build/outputs/apk/release/app-release.apk
           test -f "$APK"
-          BADGING=$(aapt2 dump badging "$APK")
+          # Resolve build-tools from the runner's Android SDK (version varies by image).
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)
+          BADGING=$("$BT/aapt2" dump badging "$APK")
           echo "$BADGING" | head -1
           echo "$BADGING" | grep -q "name='in.lingadevaru.thoshan'" || { echo "::error::wrong applicationId"; exit 1; }
           echo "$BADGING" | grep -q "label='Thoshan'" || { echo "::error::wrong app label"; exit 1; }
           TAG="${GITHUB_REF_NAME}"
           VERSION="${TAG#v}"
           echo "$BADGING" | grep -q "versionName='$VERSION'" || { echo "::error::versionName does not match tag $TAG"; exit 1; }
-          apksigner verify --print-certs "$APK" | tee /tmp/certs.txt
+          "$BT/apksigner" verify --print-certs "$APK" | tee /tmp/certs.txt
           grep -q "CN=Thoshan" /tmp/certs.txt || { echo "::error::APK not signed with the Thoshan release key"; exit 1; }
 
       - name: Name the APK asset
