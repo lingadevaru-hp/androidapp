@@ -22,11 +22,11 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Install Gradle 8.11
+      - name: Install Gradle 9.3.1
         run: |
-          curl -fsSL https://services.gradle.org/distributions/gradle-8.11-bin.zip -o /tmp/gradle.zip
+          curl -fsSL https://services.gradle.org/distributions/gradle-9.3.1-bin.zip -o /tmp/gradle.zip
           unzip -q /tmp/gradle.zip -d /opt/
-          echo "/opt/gradle-8.11/bin" >> $GITHUB_PATH
+          echo "/opt/gradle-9.3.1/bin" >> $GITHUB_PATH
           echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
           echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
 
