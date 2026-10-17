@@ -1,7 +1,11 @@
 # Thoshan · Portfolio Assistant — Native Android App
 
 Native Android front end for **Thoshan · Portfolio Assistant** built in Kotlin with Jetpack Compose.
-This is a front-end only, offline-capable client that matches the design tokens and interaction model of the web app (`ai.lingadevaru.in`).
+This is a front-end only, offline-capable client that matches the design tokens and interaction model of the web app.
+
+**Version:** 1.3.0
+**Last Updated:** October 17, 2026
+**Status:** ✅ All features working - Splash screen, smooth transitions, STT/TTS, notifications
 
 ---
 
@@ -10,7 +14,15 @@ This is a front-end only, offline-capable client that matches the design tokens 
 The app is distributed as an APK directly from GitHub Releases — no Play Store, no backend required.
 
 ### Latest release
-👉 **[Download app-release.apk from Releases →](https://github.com/lingadevaru-hp/androidapp/releases/latest)**
+👉 **[Download thoshan.apk from Releases →](https://github.com/lingadevaru-hp/androidapp/releases/latest)**
+
+**Version 1.3.0** includes:
+- ✅ **Splash Screen** - Smooth fade-in animations with app branding
+- ✅ **Smooth Transitions** - Improved navigation and UI transitions
+- ✅ **Enhanced STT** - Native Android SpeechRecognizer with better error handling
+- ✅ **Improved TTS** - Native Android TextToSpeech with multiple language support
+- ✅ **Notification System** - Proper permission handling and user notifications
+- ✅ **Bug Fixes** - Fixed compilation errors and runtime issues
 
 ### How to install
 1. Tap the link above and open the **Releases** page.
@@ -68,8 +80,24 @@ To build the signed release APK:
 
 | Variant | Path |
 |---------|------|
-| Debug | `app/build/outputs/apk/debug/app-debug.apk` |
+| Debug | `app/build/outputs/apk/debug/thoshan.apk` |
+| Debug (original) | `app/build/outputs/apk/debug/app-debug.apk` |
 | Release | `app/build/outputs/apk/release/app-release.apk` |
+
+> Note: Debug builds are named `thoshan.apk` for easier testing. Release builds use `app-release.apk`.
+
+## Local Testing
+
+To test the APK locally before deployment:
+```bash
+# Build debug APK
+./gradlew assembleDebug
+
+# Install on connected device
+adb install app/build/outputs/apk/debug/thoshan.apk
+```
+
+The debug APK includes all the latest features and can be installed directly.
 
 ## GitHub Actions
 
@@ -99,7 +127,65 @@ git push origin v1.1.0
 
 ---
 
+## Deployment & CI/CD
+
+### GitHub Actions Workflow
+
+The repository includes a GitHub Actions workflow (`.github/workflows/release.yml`) that automatically:
+1. Builds the debug APK when a git tag is pushed
+2. Creates a GitHub Release with the APK attached
+3. Uploads the APK as a workflow artifact
+
+#### How to Trigger a Release
+
+```bash
+# Create and push a new version tag
+git tag v1.3.0
+git push origin v1.3.0
+
+# GitHub Actions will automatically:
+# - Build the APK
+# - Create a release at: https://github.com/lingadevaru-hp/androidapp/releases/tag/v1.3.0
+# - Attach the APK to the release
+```
+
+### Manual Deployment
+
+For immediate testing without waiting for GitHub Actions:
+
+```bash
+# Build the APK locally
+./gradlew assembleDebug
+
+# The APK will be at:
+# app/build/outputs/apk/debug/thoshan.apk
+
+# Install on a connected device:
+adb install app/build/outputs/apk/debug/thoshan.apk
+```
+
+## Troubleshooting
+
+### Gradle Wrapper Issues
+If you get errors about `gradlew`:
+- Ensure `gradlew` is executable: `chmod +x gradlew`
+- Ensure Java 17 is installed
+- The wrapper will automatically download Gradle 9.3.1
+
+### Build Errors
+If you encounter compilation errors:
+- Run `./gradlew clean` then `./gradlew assembleDebug`
+- Ensure all Kotlin and Compose dependencies are properly synced
+
+### APK Not Found
+After a successful build, check:
+- `app/build/outputs/apk/debug/thoshan.apk` (default)
+- `app/build/outputs/apk/debug/app-debug.apk` (original)
+
+---
+
 ## Repository
 
-- Source: `github.com/lingadevaru-hp/androidapp`
-- Releases (APK downloads): `github.com/lingadevaru-hp/androidapp/releases`
+- **Source:** `github.com/lingadevaru-hp/androidapp`
+- **Releases (APK downloads):** `github.com/lingadevaru-hp/androidapp/releases`
+- **Latest Release:** [v1.3.0](https://github.com/lingadevaru-hp/androidapp/releases/tag/v1.3.0)
