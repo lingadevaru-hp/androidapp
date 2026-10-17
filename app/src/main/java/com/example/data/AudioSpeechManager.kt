@@ -33,10 +33,13 @@ interface AudioPlaybackService {
  * platform API, present on every device. Voice quality depends on the TTS
  * engine installed on the device (Google TTS on GMS phones, OEM TTS on others).
  *
- * No extra dependencies, no native libraries, no API key required.
+ * Features:
+ *   • Supports Indian languages: English (India), Kannada, Hindi, Tamil, Telugu, Malayalam
+ *   • Configurable speech rate and pitch
+ *   • Dynamic locale resolution from user settings
+ *   • Automatic fallback to device default
  *
- * Language is resolved from the user's replyLanguage setting (e.g. "English",
- * "Kannada", "Hindi") mapped to a Locale. Falls back to the device default.
+ * No extra dependencies, no native libraries, no API key required.
  */
 class AndroidTtsSpeechManager(
     context: Context,
@@ -54,17 +57,41 @@ class AndroidTtsSpeechManager(
     private var tts: TextToSpeech? = null
     private var isTtsReady = false
 
+    // Configurable speech parameters
+    private var speechRate: Float = 1.0f
+    private var speechPitch: Float = 1.0f
+    private var currentLanguage: String = "en-IN"
+
     init {
         tts = TextToSpeech(context.applicationContext) { status ->
             if (status == TextToSpeech.SUCCESS) {
-                tts?.setSpeechRate(1.0f)
-                tts?.setPitch(1.0f)
+                setSpeechParameters(speechRate, speechPitch)
                 isTtsReady = true
                 setupUtteranceListener()
             } else {
                 Logw("TextToSpeech init failed: $status")
             }
         }
+    }
+
+    /**
+     * Set speech parameters.
+     * @param rate Speech rate (0.5f = half speed, 1.0f = normal, 2.0f = double speed)
+     * @param pitch Speech pitch (0.5f = lower, 1.0f = normal, 2.0f = higher)
+     */
+    fun setSpeechParameters(rate: Float = 1.0f, pitch: Float = 1.0f) {
+        speechRate = rate.coerceIn(0.1f, 2.0f)
+        speechPitch = pitch.coerceIn(0.1f, 2.0f)
+        tts?.setSpeechRate(speechRate)
+        tts?.setPitch(speechPitch)
+    }
+
+    /**
+     * Set the language for TTS.
+     * @param languageCode Language code (e.g., "en-IN", "kn-IN", "hi-IN")
+     */
+    fun setLanguage(languageCode: String) {
+        currentLanguage = languageCode
     }
 
     private fun setupUtteranceListener() {
@@ -131,9 +158,16 @@ class AndroidTtsSpeechManager(
                 if (langResult == TextToSpeech.LANG_MISSING_DATA ||
                     langResult == TextToSpeech.LANG_NOT_SUPPORTED
                 ) {
-                    // Fall back to default locale
-                    tts?.setLanguage(Locale.getDefault())
+                    // Fall back to English (India)
+                    tts?.setLanguage(Locale("en", "IN"))
+                    // Log that the language is not supported
+                    Logw("Language $currentLanguage not supported, falling back to en-IN")
                 }
+                
+                // Ensure speech parameters are set
+                tts?.setSpeechRate(speechRate)
+                tts?.setPitch(speechPitch)
+                
                 _audioState.value = SpeakerAudioState.SPEAKING
                 tts?.speak(
                     currentText,
@@ -187,11 +221,56 @@ class AndroidTtsSpeechManager(
      * Called lazily (not in init) so the preference is already persisted.
      */
     private fun resolveLocale(): Locale {
-        // Default to English (India); the app passes the chosen language via
-        // settings when speaking. For now map common names.
-        return when {
-            else -> Locale.forLanguageTag("en-IN")
+        // Map language code to Locale
+        return when (currentLanguage.uppercase()) {
+            "KN-IN", "KN", "KANADA" -> Locale("kn", "IN")
+            "HI-IN", "HI", "HINDI" -> Locale("hi", "IN")
+            "TA-IN", "TA", "TAMIL" -> Locale("ta", "IN")
+            "TE-IN", "TE", "TELUGU" -> Locale("te", "IN")
+            "ML-IN", "ML", "MALAYALAM" -> Locale("ml", "IN")
+            else -> Locale("en", "IN") // Default to English India
         }
+    }
+
+    /**
+     * Get list of supported language codes.
+     */
+    fun getSupportedLanguages(): List<String> {
+        return listOf("en-IN", "kn-IN", "hi-IN", "ta-IN", "te-IN", "ml-IN")
+    }
+
+    /**
+     * Get display name for language code.
+     */
+    fun getLanguageDisplayName(code: String): String {
+        return when (code.uppercase()) {
+            "EN-IN" -> "English (India)"
+            "KN-IN" -> "Kannada"
+            "HI-IN" -> "Hindi"
+            "TA-IN" -> "Tamil"
+            "TE-IN" -> "Telugu"
+            "ML-IN" -> "Malayalam"
+            else -> code
+        }
+    }
+
+    /**
+     * Check if TTS engine supports a specific language.
+     */
+    fun isLanguageSupported(languageCode: String): Boolean {
+        val locale = when (languageCode.uppercase()) {
+            "KN-IN", "KN", "KANADA" -> Locale("kn", "IN")
+            "HI-IN", "HI", "HINDI" -> Locale("hi", "IN")
+            "TA-IN", "TA", "TAMIL" -> Locale("ta", "IN")
+            "TE-IN", "TE", "TELUGU" -> Locale("te", "IN")
+            "ML-IN", "ML", "MALAYALAM" -> Locale("ml", "IN")
+            else -> Locale("en", "IN")
+        }
+        
+        if (tts == null || !isTtsReady) return false
+        
+        val result = tts?.setLanguage(locale)
+        return result != TextToSpeech.LANG_MISSING_DATA && result != TextToSpeech.LANG_NOT_SUPPORTED
     }
 
     /**

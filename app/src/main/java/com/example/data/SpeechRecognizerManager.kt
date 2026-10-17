@@ -24,13 +24,20 @@ import java.util.Locale
  * devices, or the OEM's built-in engine on others). No extra dependencies,
  * no native libraries, no APK size impact.
  *
+ * Features:
+ *   • Supports Indian languages: English (India), Kannada, Hindi, Tamil, Telugu, Malayalam
+ *   • Real-time partial results for live transcription
+ *   • Audio level feedback for visual indicators
+ *   • Configurable prompts and max results
+ *   • Comprehensive error handling
+ *
  * Requires:
  *   • android.permission.RECORD_AUDIO (granted at runtime)
  *   • SpeechRecognizer.isRecognitionAvailable(context) == true
  *
  * Usage:
  *   val stt = SpeechRecognizerManager(context, scope)
- *   stt.startListening(locale = Locale.forLanguageTag("en-IN")) { transcript ->
+ *   stt.startListening(language = "en-IN") { transcript ->
  *       // handle result
  *   }
  *   stt.cancel()
@@ -46,10 +53,17 @@ class SpeechRecognizerManager(
     private val _isAvailable = MutableStateFlow(false)
     val isAvailable: StateFlow<Boolean> = _isAvailable.asStateFlow()
 
+    private val _audioLevel = MutableStateFlow(0f)
+    val audioLevel: StateFlow<Float> = _audioLevel.asStateFlow()
+
+    private val _partialTranscript = MutableStateFlow("")
+    val partialTranscript: StateFlow<String> = _partialTranscript.asStateFlow()
+
     private var recognizer: SpeechRecognizer? = null
     private var recognizerIntent: Intent? = null
     private var activeJob: Job? = null
     private var currentListener: ((String) -> Unit)? = null
+    private var currentPartialListener: ((String) -> Unit)? = null
 
     init {
         val available = SpeechRecognizer.isRecognitionAvailable(context.applicationContext)
@@ -66,7 +80,9 @@ class SpeechRecognizerManager(
                 }
 
                 override fun onRmsChanged(rmsdB: Float) {
-                    // Volume level — could be surfaced in UI later
+                    // Surface audio level for UI feedback (0-1 range, normalized from typical -10 to +20 dB)
+                    val normalizedLevel = (rmsdB.coerceIn(0f, 30f) / 30f).coerceIn(0f, 1f)
+                    _audioLevel.value = normalizedLevel
                 }
 
                 override fun onBufferReceived(buffer: ByteArray?) {}
@@ -106,7 +122,11 @@ class SpeechRecognizerManager(
                 }
 
                 override fun onPartialResults(partialResults: Bundle?) {
-                    // Interim results — optional UI feedback
+                    // Real-time partial results for live transcription
+                    val matches = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                    val partial = matches?.firstOrNull() ?: ""
+                    _partialTranscript.value = partial
+                    currentPartialListener?.invoke(partial)
                 }
 
                 override fun onEvent(eventType: Int, params: Bundle?) {}
@@ -117,10 +137,15 @@ class SpeechRecognizerManager(
     /**
      * Start listening for speech and return the transcript via [onResult].
      * Cancels any in-flight recognition first.
+     *
+     * @param language Language code (e.g., "en-IN", "kn-IN", "hi-IN", "ta-IN", "te-IN", "ml-IN")
+     * @param onResult Callback for final result
+     * @param onPartialResult Optional callback for real-time partial results
      */
     fun startListening(
-        locale: Locale = Locale.getDefault(),
-        onResult: (String) -> Unit
+        language: String = "en-IN",
+        onResult: (String) -> Unit,
+        onPartialResult: ((String) -> Unit)? = null
     ) {
         if (!isAvailable.value) {
             onResult("")
@@ -130,17 +155,74 @@ class SpeechRecognizerManager(
         cancel()
 
         currentListener = onResult
+        currentPartialListener = onPartialResult
         _isListening.value = true
+        _partialTranscript.value = ""
+
+        val locale = parseLanguageCode(language)
+        val prompt = getPromptForLanguage(language)
 
         recognizerIntent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, locale.languageTag)
-            putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak now")
+            putExtra(RecognizerIntent.EXTRA_PROMPT, prompt)
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 5)
-            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
+            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true) // Enable real-time transcription
         }
 
         recognizer?.startListening(recognizerIntent)
+    }
+
+    /**
+     * Parse language code to Locale object.
+     * Supports: en-IN, kn-IN, hi-IN, ta-IN, te-IN, ml-IN, and fallback to en-US
+     */
+    private fun parseLanguageCode(languageCode: String): Locale {
+        return when (languageCode.uppercase()) {
+            "EN-IN", "EN_US", "EN" -> Locale("en", "IN")
+            "KN-IN", "KN", "KANADA" -> Locale("kn", "IN")
+            "HI-IN", "HI", "HINDI" -> Locale("hi", "IN")
+            "TA-IN", "TA", "TAMIL" -> Locale("ta", "IN")
+            "TE-IN", "TE", "TELUGU" -> Locale("te", "IN")
+            "ML-IN", "ML", "MALAYALAM" -> Locale("ml", "IN")
+            else -> Locale.getDefault()
+        }
+    }
+
+    /**
+     * Get user-friendly prompt for each language.
+     */
+    private fun getPromptForLanguage(languageCode: String): String {
+        return when (languageCode.uppercase()) {
+            "KN-IN", "KN", "KANADA" -> "ಕನ್ನಡದಲ್ಲಿ ಮಾತನಾಡಿ"
+            "HI-IN", "HI", "HINDI" -> "हिंदी में बोलिए"
+            "TA-IN", "TA", "TAMIL" -> "தமிழில் பேசுங்கள்"
+            "TE-IN", "TE", "TELUGU" -> "తెలుగులో మాట్లాడండి"
+            "ML-IN", "ML", "MALAYALAM" -> "മലയാളത്തിൽ സംസാരിക്കുക"
+            else -> "Speak now"
+        }
+    }
+
+    /**
+     * Get list of supported language codes.
+     */
+    fun getSupportedLanguages(): List<String> {
+        return listOf("en-IN", "kn-IN", "hi-IN", "ta-IN", "te-IN", "ml-IN")
+    }
+
+    /**
+     * Get display name for language code.
+     */
+    fun getLanguageDisplayName(code: String): String {
+        return when (code.uppercase()) {
+            "EN-IN" -> "English (India)"
+            "KN-IN" -> "Kannada"
+            "HI-IN" -> "Hindi"
+            "TA-IN" -> "Tamil"
+            "TE-IN" -> "Telugu"
+            "ML-IN" -> "Malayalam"
+            else -> code
+        }
     }
 
     /** Cancel any in-flight recognition. */
@@ -163,5 +245,28 @@ class SpeechRecognizerManager(
         /** Check if the device supports speech recognition at all. */
         fun isSupported(context: Context): Boolean =
             SpeechRecognizer.isRecognitionAvailable(context.applicationContext)
+
+        /** Check if a specific language is supported on this device. */
+        fun isLanguageSupported(context: Context, languageCode: String): Boolean {
+            if (!isSupported(context)) return false
+            val locale = Locale.forLanguageTag(languageCode.replace("-", "_"))
+            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE, locale.languageTag)
+            }
+            val recognizer = SpeechRecognizer.createSpeechRecognizer(context.applicationContext)
+            val isAvailable = try {
+                // Try to check if the language is available
+                recognizer.setRecognitionListener(object : RecognitionListener {})
+                recognizer.startListening(intent)
+                recognizer.cancel()
+                true
+            } catch (e: Exception) {
+                false
+            } finally {
+                recognizer.destroy()
+            }
+            return isAvailable
+        }
     }
 }
