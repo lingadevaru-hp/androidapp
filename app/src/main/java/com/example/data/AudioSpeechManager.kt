@@ -57,14 +57,8 @@ class AndroidTtsSpeechManager(
     init {
         tts = TextToSpeech(context.applicationContext) { status ->
             if (status == TextToSpeech.SUCCESS) {
-                // Try to set language to English (India) or device default
-                val result = tts?.language
-                if (result != TextToSpeech.LANG_MISSING_DATA &&
-                    result != TextToSpeech.LANG_NOT_SUPPORTED
-                ) {
-                    tts?.setSpeechRate(1.0f)
-                    tts?.setPitch(1.0f)
-                }
+                tts?.setSpeechRate(1.0f)
+                tts?.setPitch(1.0f)
                 isTtsReady = true
                 setupUtteranceListener()
             } else {
