@@ -1,0 +1,100 @@
+name: Build & Release APK
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Restore Gradle cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle.kts') }}-${{ hashFiles('**/gradle/libs.versions.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+
+      - name: Assemble release APK
+        run: ./gradlew assembleRelease
+
+      - name: Get release APK path
+        id: apk_path
+        run: |
+          APK_PATH=$(find app/build/outputs/apk/release -name "*.apk" | head -1)
+          echo "apk_path=$APK_PATH" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Thoshan Chat Android v${{ github.ref_name }}
+          body: |
+            ## Thoshan Chat — Android APK v${{ github.ref_name }}
+
+            ### Download
+            Download the APK from the **Assets** section on the right.
+
+            ### Installation
+            1. Download `app-release.apk` from this release.
+            2. On your Android device, enable **Install unknown apps** for your browser/File Manager.
+            3. Open the downloaded APK and tap **Install**.
+            4. Open **Thoshan · Portfolio Assistant** and start chatting.
+
+            ### What's in this release
+            - ✅ Real Speech-to-Text (native Android SpeechRecognizer) — no API key, works offline
+            - ✅ Real Text-to-Speech (native Android TextToSpeech) — no API key, works offline
+            - ✅ Works on Android 8.0 (API 26) through Android 15+ (API 35)
+            - ✅ Zero third-party voice dependencies — zero extra APK size
+            - ✅ Front-end only, no backend required
+            - ✅ 30-second voice capture cap with live level meter
+            - ✅ Hands-free voice call mode (listen → think → speak)
+            - ✅ Dark theme by default, with Light/System options
+            - ✅ Chat history, search, settings, attachments (photos/camera/files)
+            - ✅ Per-message speaker button with idle/loading/speaking/paused states
+
+            ### Requirements
+            - Android 8.0+ (API level 26 or higher)
+            - Microphone permission (granted at first use)
+            - A TTS voice pack installed on your device (Google TTS is pre-installed on most devices)
+
+            ### Privacy
+            - No API keys embedded in the APK
+            - Speech processing happens on-device
+            - Chat history stays on your device (DataStore)
+            - No network calls for voice features
+          files: ${{ steps.apk_path.outputs.apk_path }}
+          generate_release_notes: false
+          draft: false
+          prerelease: false
+
+      - name: Upload APK as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: thoshan-chat-android-apk
+          path: ${{ steps.apk_path.outputs.apk_path }}
+          retention-days: 90
