@@ -1,0 +1,6 @@
+{
+  "name": "Thoshan · Portfolio Assistant",
+  "description": "Native Android front end for Thoshan · Portfolio Assistant with local mock responses, custom design tokens, voice flow, and call mode.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

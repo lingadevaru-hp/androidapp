@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" fill="#0a0a0b" />
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#e8703a" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#0a0a0b" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="petalGrad" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#e8703a"/>
+      <stop offset="100%" stop-color="#f2a65a"/>
+    </linearGradient>
+  </defs>
+  <circle cx="256" cy="270" r="180" fill="url(#glow)"/>
+  <g fill="url(#petalGrad)">
+    <!-- Central petal -->
+    <path d="M 256 120 C 230 180, 220 250, 256 340 C 292 250, 282 180, 256 120 Z"/>
+    <!-- Left inner petal -->
+    <path d="M 256 340 C 200 300, 155 220, 195 160 C 220 215, 235 270, 256 340 Z"/>
+    <!-- Right inner petal -->
+    <path d="M 256 340 C 312 300, 357 220, 317 160 C 292 215, 277 270, 256 340 Z"/>
+    <!-- Left outer petal -->
+    <path d="M 256 340 C 180 325, 120 270, 145 225 C 185 260, 215 305, 256 340 Z"/>
+    <!-- Right outer petal -->
+    <path d="M 256 340 C 332 325, 392 270, 367 225 C 327 260, 297 305, 256 340 Z"/>
+    <!-- Base lotus node -->
+    <ellipse cx="256" cy="342" rx="16" ry="8" fill="#e8703a"/>
+  </g>
+</svg>
