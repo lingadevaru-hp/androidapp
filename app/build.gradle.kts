@@ -1,4 +1,5 @@
 import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
+import java.util.Properties
 
 plugins {
   alias(libs.plugins.android.application)
@@ -8,35 +9,55 @@ plugins {
   alias(libs.plugins.google.services)
 }
 
+// Release signing is loaded from OUTSIDE the repository so no credentials are ever committed.
+// Local default: ~/.config/thoshan-android/{thoshan-release.keystore, signing.properties}
+// CI override:  THOSHAN_KEYSTORE_PATH + THOSHAN_STORE_PASSWORD / THOSHAN_KEY_ALIAS /
+//               THOSHAN_KEY_PASSWORD (see RELEASING.md)
+val thoshanSigningDir = file("${System.getProperty("user.home")}/.config/thoshan-android")
+val thoshanSigningProps = Properties().apply {
+  val propsFile = file("${thoshanSigningDir}/signing.properties")
+  if (propsFile.exists()) propsFile.inputStream().use { load(it) }
+}
+fun signingEnvOrProp(name: String): String =
+  (System.getenv(name) ?: thoshanSigningProps.getProperty(name) ?: "").trim()
+
 android {
-  namespace = "com.example"
+  // Namespace must be a valid Java package ("in" is a keyword), so the R/BuildConfig
+  // package is lingadevaru.thoshan. The user-facing install identity is applicationId below.
+  namespace = "lingadevaru.thoshan"
   compileSdk { version = release(36) { minorApiLevel = 1 } }
 
   defaultConfig {
-    applicationId = "com.aistudio.portfolioassistant.thoshan"
+    // Permanent install identity — never change across releases (updates depend on it).
+    applicationId = "in.lingadevaru.thoshan"
     minSdk = 26
     targetSdk = 35
-    versionCode = 3
-    versionName = "1.2.0"
+    versionCode = 4
+    versionName = "1.4.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
 
-  // Do not remove or modify these signingConfigs. They are necessary for building, installing,
-  // and updating Android apps in AI Studio.
   signingConfigs {
     create("release") {
-      val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
+      // CI writes the keystore from a secret into the workspace; local builds use the home-dir copy.
+      val keystorePath = System.getenv("THOSHAN_KEYSTORE_PATH")
+        ?: "${thoshanSigningDir}/thoshan-release.keystore"
       storeFile = file(keystorePath)
-      storePassword = System.getenv("STORE_PASSWORD")
-      keyAlias = "upload"
-      keyPassword = System.getenv("KEY_PASSWORD")
+      storePassword = signingEnvOrProp("THOSHAN_STORE_PASSWORD")
+      keyAlias = signingEnvOrProp("THOSHAN_KEY_ALIAS").ifEmpty { "thoshan-release" }
+      keyPassword = signingEnvOrProp("THOSHAN_KEY_PASSWORD")
     }
-    create("debugConfig") {
-      storeFile = file("${rootDir}/debug.keystore")
-      storePassword = "android"
-      keyAlias = "androiddebugkey"
-      keyPassword = "android"
+    // Optional: only used when the gitignored debug.keystore exists. Otherwise AGP's
+    // default debug key (~/.android/debug.keystore) is used, so CI builds don't fail.
+    getByName("debug") {
+      val debugKs = file("${rootDir}/debug.keystore")
+      if (debugKs.exists()) {
+        storeFile = debugKs
+        storePassword = "android"
+        keyAlias = "androiddebugkey"
+        keyPassword = "android"
+      }
     }
   }
 
@@ -45,14 +66,7 @@ android {
       isCrunchPngs = false
       isMinifyEnabled = false
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-      // Do not remove or modify this signingConfig assignment. It is necessary for Android apps in
-      // AI Studio.
       signingConfig = signingConfigs.getByName("release")
-    }
-    debug {
-      // Do not remove or modify this signingConfig assignment. It is necessary for Android apps in
-      // AI Studio.
-      signingConfig = signingConfigs.getByName("debugConfig")
     }
   }
   compileOptions {

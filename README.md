@@ -101,15 +101,12 @@ The debug APK includes all the latest features and can be installed directly.
 
 ## GitHub Actions
 
-Pushing a git tag like `v1.1.0` triggers the **Build & Release APK** workflow (`.github/workflows/release.yml`), which:
-1. Builds the release APK.
-2. Creates a GitHub Release tagged `v1.1.0`.
-3. Attaches the APK as a release asset for direct download.
+Pushing a git tag like `v1.4.0` triggers the **Build & Release APK** workflow (`.github/workflows/release.yml`), which builds the **signed release** APK and attaches it to a GitHub Release as `Thoshan-v1.4.0.apk`.
 
-### To cut a release locally
+The full permanent release process (versioning, signing key, backup/restore, CI secrets) is documented in [RELEASING.md](RELEASING.md). To cut a release locally:
+
 ```bash
-git tag v1.1.0
-git push origin v1.1.0
+./scripts/release.sh v1.4.0
 ```
 
 ## Requirements
@@ -129,40 +126,9 @@ git push origin v1.1.0
 
 ## Deployment & CI/CD
 
-### GitHub Actions Workflow
-
-The repository includes a GitHub Actions workflow (`.github/workflows/release.yml`) that automatically:
-1. Builds the debug APK when a git tag is pushed
-2. Creates a GitHub Release with the APK attached
-3. Uploads the APK as a workflow artifact
-
-#### How to Trigger a Release
-
-```bash
-# Create and push a new version tag
-git tag v1.3.0
-git push origin v1.3.0
-
-# GitHub Actions will automatically:
-# - Build the APK
-# - Create a release at: https://github.com/lingadevaru-hp/androidapp/releases/tag/v1.3.0
-# - Attach the APK to the release
-```
-
-### Manual Deployment
-
-For immediate testing without waiting for GitHub Actions:
-
-```bash
-# Build the APK locally
-./gradlew assembleDebug
-
-# The APK will be at:
-# app/build/outputs/apk/debug/thoshan.apk
-
-# Install on a connected device:
-adb install app/build/outputs/apk/debug/thoshan.apk
-```
+See **[RELEASING.md](RELEASING.md)** for the permanent release workflow:
+versioning rules, the out-of-repo signing key (backup/restore), the local
+`scripts/release.sh` path, and the CI secrets setup for tag-triggered releases.
 
 ## Troubleshooting
 
@@ -177,10 +143,13 @@ If you encounter compilation errors:
 - Run `./gradlew clean` then `./gradlew assembleDebug`
 - Ensure all Kotlin and Compose dependencies are properly synced
 
+### Release build fails with a keystore error
+- The release keystore lives outside the repo at `~/.config/thoshan-android/` — see [RELEASING.md](RELEASING.md) to restore it from backup.
+
 ### APK Not Found
 After a successful build, check:
-- `app/build/outputs/apk/debug/thoshan.apk` (default)
-- `app/build/outputs/apk/debug/app-debug.apk` (original)
+- `app/build/outputs/apk/release/app-release.apk` (signed release — installable, updatable)
+- `app/build/outputs/apk/debug/app-debug.apk` (debug only)
 
 ---
 
@@ -188,4 +157,4 @@ After a successful build, check:
 
 - **Source:** `github.com/lingadevaru-hp/androidapp`
 - **Releases (APK downloads):** `github.com/lingadevaru-hp/androidapp/releases`
-- **Latest Release:** [v1.3.0](https://github.com/lingadevaru-hp/androidapp/releases/tag/v1.3.0)
+- **Latest Release:** [v1.4.0](https://github.com/lingadevaru-hp/androidapp/releases/tag/v1.4.0)

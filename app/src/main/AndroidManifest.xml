@@ -45,9 +45,9 @@
             android:name=".data.CallActionReceiver"
             android:exported="false">
             <intent-filter>
-                <action android:name="com.example.CALL_MUTE" />
-                <action android:name="com.example.CALL_SPEAKER" />
-                <action android:name="com.example.CALL_END" />
+                <action android:name="in.lingadevaru.thoshan.CALL_MUTE" />
+                <action android:name="in.lingadevaru.thoshan.CALL_SPEAKER" />
+                <action android:name="in.lingadevaru.thoshan.CALL_END" />
             </intent-filter>
         </receiver>
     </application>

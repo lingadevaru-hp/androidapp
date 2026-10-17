@@ -1,5 +1,9 @@
 name: Build & Release APK
 
+# Builds a release-signed APK when a vX.Y.Z tag is pushed and attaches it to a
+# GitHub Release as Thoshan-vX.Y.Z.apk. Signing material comes from repository
+# secrets (see RELEASING.md) — never from files in this repository.
+
 on:
   push:
     tags:
@@ -28,67 +32,55 @@ jobs:
       - name: Create placeholder .env (secrets plugin needs a file)
         run: echo "# placeholder — no secrets" > .env
 
-      - name: Assemble debug APK
-        run: ./gradlew assembleDebug
-
-      - name: Locate APK
-        id: apk_path
+      - name: Restore release keystore from secrets
+        env:
+          THOSHAN_KEYSTORE_BASE64: ${{ secrets.THOSHAN_KEYSTORE_BASE64 }}
         run: |
-          APK_PATH=$(find app/build/outputs/apk/debug -name "*.apk" | head -1)
-          if [ -z "$APK_PATH" ]; then
-            echo "APK_NOT_FOUND" >> $GITHUB_OUTPUT
-          else
-            echo "apk_path=$APK_PATH" >> $GITHUB_OUTPUT
+          if [ -z "$THOSHAN_KEYSTORE_BASE64" ]; then
+            echo "::error::THOSHAN_KEYSTORE_BASE64 secret is not set (see RELEASING.md)"
+            exit 1
           fi
+          mkdir -p "$HOME/.config/thoshan-android"
+          echo "$THOSHAN_KEYSTORE_BASE64" | base64 -d > "$HOME/.config/thoshan-android/thoshan-release.keystore"
+          chmod 600 "$HOME/.config/thoshan-android/thoshan-release.keystore"
+
+      - name: Build signed release APK
+        env:
+          THOSHAN_STORE_PASSWORD: ${{ secrets.THOSHAN_STORE_PASSWORD }}
+          THOSHAN_KEY_ALIAS: ${{ secrets.THOSHAN_KEY_ALIAS }}
+          THOSHAN_KEY_PASSWORD: ${{ secrets.THOSHAN_KEY_PASSWORD }}
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Verify APK identity and signature
+        run: |
+          APK=app/build/outputs/apk/release/app-release.apk
+          test -f "$APK"
+          BADGING=$(aapt2 dump badging "$APK")
+          echo "$BADGING" | head -1
+          echo "$BADGING" | grep -q "name='in.lingadevaru.thoshan'" || { echo "::error::wrong applicationId"; exit 1; }
+          echo "$BADGING" | grep -q "label='Thoshan'" || { echo "::error::wrong app label"; exit 1; }
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
+          echo "$BADGING" | grep -q "versionName='$VERSION'" || { echo "::error::versionName does not match tag $TAG"; exit 1; }
+          apksigner verify --print-certs "$APK" | tee /tmp/certs.txt
+          grep -q "CN=Thoshan" /tmp/certs.txt || { echo "::error::APK not signed with the Thoshan release key"; exit 1; }
+
+      - name: Name the APK asset
+        run: |
+          cp app/build/outputs/apk/release/app-release.apk "Thoshan-${GITHUB_REF_NAME}.apk"
 
       - name: Create GitHub Release with APK asset
-        if: steps.apk_path.outputs.apk_path != 'APK_NOT_FOUND'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: Thoshan Chat Android ${{ github.ref_name }}
+          name: Thoshan Android ${{ github.ref_name }}
+          files: Thoshan-${{ github.ref_name }}.apk
           body: |
-            ## Thoshan Chat — Android APK ${{ github.ref_name }}
+            ## Thoshan Android ${{ github.ref_name }}
 
-            ### Download
-            Download `app-debug.apk` from the **Assets** section on the right.
+            Download `Thoshan-${{ github.ref_name }}.apk` from **Assets** and open it on your phone to install.
 
-            ### Installation
-            1. Download the APK from this release page.
-            2. On your Android device, enable **Install unknown apps** for your browser/File Manager.
-            3. Open the downloaded APK and tap **Install**.
-            4. Open **Thoshan · Portfolio Assistant** and start chatting.
-
-            ### What's in this release
-            - ✅ Real Speech-to-Text (native Android SpeechRecognizer) — no API key, works offline
-            - ✅ Real Text-to-Speech (native Android TextToSpeech) — no API key, works offline
-            - ✅ Works on Android 8.0 (API 26) through Android 15+ (API 35)
-            - ✅ Zero third-party voice dependencies — zero extra APK size
-            - ✅ Front-end only, no backend required
-            - ✅ 30-second voice capture cap with live level meter
-            - ✅ Hands-free voice call mode (listen → think → speak)
-            - ✅ Dark theme by default, with Light/System options
-            - ✅ Chat history, search, settings, attachments (photos/camera/files)
-            - ✅ Per-message speaker button with idle/loading/speaking/paused states
-
-            ### Requirements
-            - Android 8.0+ (API level 26 or higher)
-            - Microphone permission (granted at first use)
-            - A TTS voice pack installed on your device (Google TTS is pre-installed on most devices)
-
-            ### Privacy
-            - No API keys embedded in the APK
-            - Speech processing happens on-device
-            - Chat history stays on your device (DataStore)
-            - No network calls for voice features
-          files: ${{ steps.apk_path.outputs.apk_path }}
-          generate_release_notes: false
-          draft: false
-          prerelease: false
-
-      - name: Upload APK as workflow artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: thoshan-chat-android-apk
-          path: ${{ steps.apk_path.outputs.apk_path }}
-          retention-days: 90
+            - Application ID: `in.lingadevaru.thoshan`
+            - Requires Android 8.0+ (API 26)
+            - Install unknown apps permission needed for browser/file-manager installs
+            - If you previously installed the old `com.ai.studio.portfolioassistant.thoshan` build, uninstall it first — this is a new application identity and will not conflict.
